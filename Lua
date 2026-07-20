@@ -1,6 +1,6 @@
 -- ============================================================
---  Rivals | Slingshot Bypass
---  UseItem Remote + Multi-Method Bypass
+--  Rivals | Slingshot Bypass + Orbit Aura
+--  v3 | No UseItem | Projectile Intercept System
 -- ============================================================
 
 while not game:IsLoaded() do task.wait(0.1) end
@@ -11,34 +11,10 @@ while not game:IsLoaded() do task.wait(0.1) end
 local RunService        = game:GetService("RunService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService  = game:GetService("UserInputService")
+local TweenService      = game:GetService("TweenService")
 
 local LP                = Players.LocalPlayer
 local Camera            = workspace.CurrentCamera
-
--- ============================================================
--- [[ REMOTES ]]
--- ============================================================
-local UseItemRemote = nil
-
--- Path: ReplicatedStorage.Remotes.Replication.Fighter.UseItem
-local function FindUseItemRemote()
-    local ok, remote = pcall(function()
-        return ReplicatedStorage
-            :WaitForChild("Remotes",    10)
-            :WaitForChild("Replication",10)
-            :WaitForChild("Fighter",    10)
-            :WaitForChild("UseItem",    10)
-    end)
-    if ok and remote then
-        UseItemRemote = remote
-        print("[creep.cc] UseItem remote found!")
-    else
-        warn("[creep.cc] UseItem remote NOT found - check path")
-    end
-end
-
-task.spawn(FindUseItemRemote)
 
 -- ============================================================
 -- [[ UI LIBRARY ]]
@@ -69,21 +45,21 @@ local ch = {
 -- ============================================================
 -- [[ SLINGSHOT TAB - LEFT ]]
 -- ============================================================
-local SlingshotGroup = ch.Slingshot:AddLeftGroupbox('Slingshot Bypass')
-local EquipGroup     = ch.Slingshot:AddLeftGroupbox('Item Setup')
-local StatusGroup    = ch.Slingshot:AddLeftGroupbox('Status')
+local BypassGroup  = ch.Slingshot:AddLeftGroupbox('Slingshot Bypass')
+local OrbitGroup   = ch.Slingshot:AddLeftGroupbox('Orbit Aura')
+local StatusGroup  = ch.Slingshot:AddLeftGroupbox('Status')
 
 -- ============================================================
 -- [[ SLINGSHOT TAB - RIGHT ]]
 -- ============================================================
-local MethodGroup    = ch.Slingshot:AddRightGroupbox('Bypass Method')
-local HomingGroup    = ch.Slingshot:AddRightGroupbox('Homing Settings')
-local StealthGroup   = ch.Slingshot:AddRightGroupbox('Stealth Settings')
+local MethodGroup  = ch.Slingshot:AddRightGroupbox('Bypass Settings')
+local HomingGroup  = ch.Slingshot:AddRightGroupbox('Homing Settings')
+local OrbitCfg     = ch.Slingshot:AddRightGroupbox('Orbit Settings')
 
 -- ============================================================
--- [[ BYPASS TOGGLES ]]
+-- [[ BYPASS TOGGLES - LEFT ]]
 -- ============================================================
-SlingshotGroup:AddToggle('BypassEnabled', {
+BypassGroup:AddToggle('BypassEnabled', {
     Text     = 'Bypass Enabled',
     Default  = false,
     Callback = function(v)
@@ -91,146 +67,117 @@ SlingshotGroup:AddToggle('BypassEnabled', {
     end
 })
 
-SlingshotGroup:AddToggle('SelfProtect', {
-    Text    = 'Protect Self (Block Incoming)',
-    Default = true,
+BypassGroup:AddToggle('HomingEnabled', {
+    Text     = 'Homing Redirect',
+    Default  = true,
     Callback = function() end
 })
 
-SlingshotGroup:AddToggle('HomingEnabled', {
-    Text    = 'Homing Redirect',
-    Default = true,
+BypassGroup:AddToggle('InvisEnabled', {
+    Text     = 'Make Invisible',
+    Default  = true,
     Callback = function() end
 })
 
-SlingshotGroup:AddToggle('InvisEnabled', {
-    Text    = 'Make Invisible (Client)',
-    Default = true,
+BypassGroup:AddToggle('NullifyEnabled', {
+    Text     = 'Nullify on Spawn',
+    Default  = false,
     Callback = function() end
 })
 
-SlingshotGroup:AddToggle('NullifyEnabled', {
-    Text    = 'Nullify (Delete on Spawn)',
-    Default = false,
+BypassGroup:AddToggle('TeamCheck', {
+    Text     = 'Team Check',
+    Default  = true,
     Callback = function() end
 })
 
-SlingshotGroup:AddToggle('TeamCheck', {
-    Text    = 'Team Check',
-    Default = true,
+BypassGroup:AddToggle('RedirectToOwner', {
+    Text     = 'Redirect Back To Shooter',
+    Default  = true,
     Callback = function() end
 })
 
-SlingshotGroup:AddToggle('OwnProjectileHoming', {
-    Text    = 'Own Projectile Homing',
-    Default = false,
+BypassGroup:AddToggle('OwnProjHoming', {
+    Text     = 'Own Projectile Homing',
+    Default  = false,
     Callback = function() end
 })
 
 -- ============================================================
--- [[ ITEM SETUP - EQUIP / SELECT ]]
--- UseItem remote: FireServer("Equip"/"Select")
--- Slingshot wont work without it being equipped
+-- [[ ORBIT AURA - LEFT ]]
+-- Rotating parts around your character
+-- Intercepts and destroys incoming slingshot balls
 -- ============================================================
-local SlingshotName = {"Slingshot"} -- editable via input
-
-EquipGroup:AddInput('SlingshotItemName', {
-    Text        = 'Item Name',
-    Default     = 'Slingshot',
-    Numeric     = false,
-    Finished    = false,
-    Placeholder = 'Enter slingshot item name...',
-    Callback    = function(v)
-        SlingshotName[1] = v ~= "" and v or "Slingshot"
-    end
-})
-
-EquipGroup:AddButton('Equip Slingshot', function()
-    if not UseItemRemote then
-        warn("[creep.cc] UseItem remote not found!")
-        return
-    end
-    local name = SlingshotName[1]
-    local ok, err = pcall(function()
-        UseItemRemote:FireServer("Equip", name)
-    end)
-    if ok then
-        print("[creep.cc] Equipped:", name)
-    else
-        warn("[creep.cc] Equip failed:", err)
-    end
-end)
-
-EquipGroup:AddButton('Select Slingshot', function()
-    if not UseItemRemote then
-        warn("[creep.cc] UseItem remote not found!")
-        return
-    end
-    local name = SlingshotName[1]
-    local ok, err = pcall(function()
-        UseItemRemote:FireServer("Select", name)
-    end)
-    if ok then
-        print("[creep.cc] Selected:", name)
-    else
-        warn("[creep.cc] Select failed:", err)
-    end
-end)
-
-EquipGroup:AddButton('Equip + Select', function()
-    if not UseItemRemote then
-        warn("[creep.cc] UseItem remote not found!")
-        return
-    end
-    local name = SlingshotName[1]
-    pcall(function() UseItemRemote:FireServer("Equip",  name) end)
-    task.wait(0.1)
-    pcall(function() UseItemRemote:FireServer("Select", name) end)
-    print("[creep.cc] Equipped + Selected:", name)
-end)
-
--- ============================================================
--- [[ STATUS LABELS ]]
--- ============================================================
-local StatusLabel   = StatusGroup:AddLabel('Status: Idle')
-local RemoteLabel   = StatusGroup:AddLabel('Remote: Searching...')
-local ProjectileLabel = StatusGroup:AddLabel('Active Projectiles: 0')
-local OwnerLabel    = StatusGroup:AddLabel('Last Owner: None')
-
--- Update remote status
-task.spawn(function()
-    while not bc.Unloaded do
-        task.wait(1)
-        if UseItemRemote then
-            RemoteLabel:SetText('Remote: ✓ Found')
-        else
-            RemoteLabel:SetText('Remote: ✗ Not Found')
-            FindUseItemRemote()
+OrbitGroup:AddToggle('OrbitEnabled', {
+    Text     = 'Orbit Aura Enabled',
+    Default  = false,
+    Callback = function(v)
+        if not v then
+            _G.OrbitCleanup()
         end
+        print("[creep.cc] Orbit Aura:", v and "ON" or "OFF")
     end
-end)
+})
+
+OrbitGroup:AddToggle('OrbitIntercept', {
+    Text     = 'Intercept Projectiles',
+    Default  = true,
+    Callback = function() end
+})
+
+OrbitGroup:AddToggle('OrbitVisible', {
+    Text     = 'Visible Parts',
+    Default  = true,
+    Callback = function(v)
+        _G.OrbitSetVisible(v)
+    end
+})
+
+OrbitGroup:AddToggle('OrbitGlow', {
+    Text     = 'Neon Glow',
+    Default  = true,
+    Callback = function() end
+})
+
+OrbitGroup:AddLabel('Orbit Color'):AddColorPicker('OrbitColor', {
+    Default  = Color3.fromRGB(0, 200, 255),
+    Callback = function() end
+})
+
+OrbitGroup:AddLabel('Orbit Color 2'):AddColorPicker('OrbitColor2', {
+    Default  = Color3.fromRGB(255, 0, 200),
+    Callback = function() end
+})
 
 -- ============================================================
--- [[ METHOD SETTINGS - RIGHT SIDE ]]
+-- [[ STATUS - LEFT ]]
+-- ============================================================
+local StatusLabel     = StatusGroup:AddLabel('Bypass: Idle')
+local ProjectileLbl   = StatusGroup:AddLabel('Projectiles: 0')
+local OrbitStatusLbl  = StatusGroup:AddLabel('Orbit Parts: 0')
+local InterceptLbl    = StatusGroup:AddLabel('Intercepted: 0')
+
+-- ============================================================
+-- [[ BYPASS SETTINGS - RIGHT ]]
 -- ============================================================
 MethodGroup:AddDropdown('BypassMethod', {
-    Text    = 'Primary Method',
-    Default = 'Combined',
-    Values  = { 'Combined', 'Homing', 'Invisible', 'Nullify', 'FastCast Hook' },
+    Text     = 'Method',
+    Default  = 'Combined',
+    Values   = { 'Combined', 'Homing', 'Invisible', 'Nullify' },
     Callback = function(v)
-        print("[creep.cc] Method set to:", v)
+        print("[creep.cc] Method:", v)
     end
 })
 
 MethodGroup:AddToggle('UsePreRender', {
-    Text    = 'Use PreRender (Stealthy)',
-    Default = true,
+    Text     = 'Use PreRender (Stealthy)',
+    Default  = true,
     Callback = function() end
 })
 
 MethodGroup:AddToggle('VelocityDetect', {
-    Text    = 'Velocity-Based Detection',
-    Default = true,
+    Text     = 'Velocity Detection',
+    Default  = true,
     Callback = function() end
 })
 
@@ -244,8 +191,37 @@ MethodGroup:AddSlider('VelocityThreshold', {
     Callback = function() end
 })
 
+MethodGroup:AddToggle('RandomDelay', {
+    Text     = 'Random Micro-Delay',
+    Default  = true,
+    Callback = function() end
+})
+
+MethodGroup:AddSlider('MaxRandomDelay', {
+    Text     = 'Max Random Delay',
+    Default  = 16,
+    Min      = 0,
+    Max      = 100,
+    Rounding = 0,
+    Suffix   = ' ms',
+    Callback = function() end
+})
+
+MethodGroup:AddInput('ExtraProjectileName', {
+    Text        = 'Extra Projectile Name',
+    Default     = '',
+    Placeholder = 'e.g. Pebble, Stone...',
+    Finished    = true,
+    Callback    = function(v)
+        if v ~= "" then
+            table.insert(ExtraProjectileNames or {}, v)
+            print("[creep.cc] Added:", v)
+        end
+    end
+})
+
 -- ============================================================
--- [[ HOMING SETTINGS ]]
+-- [[ HOMING SETTINGS - RIGHT ]]
 -- ============================================================
 HomingGroup:AddSlider('HomingSpeed', {
     Text     = 'Homing Speed',
@@ -258,8 +234,8 @@ HomingGroup:AddSlider('HomingSpeed', {
 })
 
 HomingGroup:AddToggle('HomingPrediction', {
-    Text    = 'Predict Target Position',
-    Default = true,
+    Text     = 'Predict Target',
+    Default  = true,
     Callback = function() end
 })
 
@@ -270,12 +246,6 @@ HomingGroup:AddSlider('HomingDelay', {
     Max      = 100,
     Rounding = 0,
     Suffix   = ' ms',
-    Callback = function() end
-})
-
-HomingGroup:AddToggle('RedirectToOwner', {
-    Text    = 'Redirect Back to Shooter',
-    Default = true,
     Callback = function() end
 })
 
@@ -290,52 +260,107 @@ HomingGroup:AddSlider('MaxHomingDist', {
 })
 
 -- ============================================================
--- [[ STEALTH SETTINGS ]]
+-- [[ ORBIT SETTINGS - RIGHT ]]
 -- ============================================================
-StealthGroup:AddToggle('RandomDelay', {
-    Text    = 'Random Micro-Delay',
-    Default = true,
+OrbitCfg:AddSlider('OrbitRadius', {
+    Text     = 'Orbit Radius',
+    Default  = 6,
+    Min      = 2,
+    Max      = 30,
+    Rounding = 1,
+    Suffix   = ' studs',
     Callback = function() end
 })
 
-StealthGroup:AddSlider('MaxRandomDelay', {
-    Text     = 'Max Random Delay',
-    Default  = 16,
+OrbitCfg:AddSlider('OrbitCount', {
+    Text     = 'Part Count',
+    Default  = 6,
+    Min      = 1,
+    Max      = 20,
+    Rounding = 0,
+    Callback = function(v)
+        _G.OrbitRebuild(math.floor(v))
+    end
+})
+
+OrbitCfg:AddSlider('OrbitSpeed', {
+    Text     = 'Spin Speed',
+    Default  = 2,
+    Min      = 0.1,
+    Max      = 20,
+    Rounding = 1,
+    Suffix   = ' rad/s',
+    Callback = function() end
+})
+
+OrbitCfg:AddSlider('OrbitSize', {
+    Text     = 'Part Size',
+    Default  = 1,
+    Min      = 0.2,
+    Max      = 5,
+    Rounding = 1,
+    Suffix   = ' studs',
+    Callback = function() end
+})
+
+OrbitCfg:AddSlider('OrbitHeight', {
+    Text     = 'Height Offset',
+    Default  = 0,
+    Min      = -5,
+    Max      = 5,
+    Rounding = 1,
+    Suffix   = ' studs',
+    Callback = function() end
+})
+
+OrbitCfg:AddSlider('OrbitTilt', {
+    Text     = 'Tilt Angle',
+    Default  = 0,
+    Min      = -90,
+    Max      = 90,
+    Rounding = 0,
+    Suffix   = '°',
+    Callback = function() end
+})
+
+OrbitCfg:AddSlider('InterceptRadius', {
+    Text     = 'Intercept Range',
+    Default  = 2,
+    Min      = 0.5,
+    Max      = 10,
+    Rounding = 1,
+    Suffix   = ' studs',
+    Callback = function() end
+})
+
+OrbitCfg:AddDropdown('OrbitShape', {
+    Text     = 'Part Shape',
+    Default  = 'Ball',
+    Values   = { 'Ball', 'Block', 'Wedge', 'Cylinder' },
+    Callback = function() end
+})
+
+OrbitCfg:AddDropdown('OrbitPattern', {
+    Text     = 'Pattern',
+    Default  = 'Ring',
+    Values   = { 'Ring', 'Double Ring', 'Helix', 'Figure 8', 'Spiral' },
+    Callback = function() end
+})
+
+OrbitCfg:AddToggle('OrbitRainbow', {
+    Text     = 'Rainbow Mode',
+    Default  = false,
+    Callback = function() end
+})
+
+OrbitCfg:AddSlider('OrbitTransparency', {
+    Text     = 'Transparency',
+    Default  = 0,
     Min      = 0,
     Max      = 100,
     Rounding = 0,
-    Suffix   = ' ms',
+    Suffix   = '%',
     Callback = function() end
-})
-
-StealthGroup:AddToggle('UsePCall', {
-    Text    = 'Wrap in pcall',
-    Default = true,
-    Callback = function() end
-})
-
-StealthGroup:AddSlider('ProjectileLifetime', {
-    Text     = 'Projectile Max Lifetime',
-    Default  = 10,
-    Min      = 1,
-    Max      = 30,
-    Rounding = 0,
-    Suffix   = ' s',
-    Callback = function() end
-})
-
--- Extra projectile names (if game renames)
-StealthGroup:AddInput('ExtraProjectileName', {
-    Text        = 'Extra Projectile Name',
-    Default     = '',
-    Placeholder = 'e.g. Pebble, Stone...',
-    Finished    = true,
-    Callback    = function(v)
-        if v ~= "" then
-            table.insert(ExtraProjectileNames, v)
-            print("[creep.cc] Added projectile name:", v)
-        end
-    end
 })
 
 -- ============================================================
@@ -372,72 +397,53 @@ ci:ApplyTheme('Logic')
 bc.ToggleKeybind        = Options.MenuKeybind
 bc.KeybindFrame.Visible = false
 bc:SetWatermarkVisibility(true)
-bc:SetWatermark('creep.cc | Rivals Slingshot')
+bc:SetWatermark('creep.cc | Rivals')
 bc:OnUnload(function() bc.Unloaded = true end)
 
 -- ============================================================
--- [[ BYPASS LOGIC ]]
+-- [[ HELPER FUNCTIONS ]]
 -- ============================================================
+local function Get(t)  return Toggles[t] and Toggles[t].Value end
+local function Opt(o)  return Options[o]  and Options[o].Value  end
 
--- Known projectile names
-local KnownProjectileNames = {
+-- ============================================================
+-- [[ BYPASS SYSTEM ]]
+-- ============================================================
+local ActiveProjectiles  = {}
+local ProjectileOwners   = {}
+ExtraProjectileNames     = {}
+local InterceptedCount   = 0
+
+local KnownNames = {
     "CoreProjectile",
     "SlingshotBall",
     "Pebble",
     "Stone",
     "SlingProjectile",
-    "Ball",
 }
 
--- Extra names from user input
-ExtraProjectileNames = {}
-
--- Active tracking
-local ActiveProjectiles = {}
-local ProjectileOwners  = {}
-
--- ============================================================
--- [[ HELPERS ]]
--- ============================================================
-local function Get(toggle)
-    return Toggles[toggle] and Toggles[toggle].Value
-end
-
-local function GetOpt(option)
-    return Options[option] and Options[option].Value
-end
-
-local function IsKnownProjectile(part)
+local function IsProjectile(part)
     if not part:IsA("BasePart") then return false end
-
-    -- Check known names
-    for _, name in ipairs(KnownProjectileNames) do
-        if part.Name == name then return true end
+    for _, n in ipairs(KnownNames) do
+        if part.Name == n then return true end
     end
-
-    -- Check user extra names
-    for _, name in ipairs(ExtraProjectileNames) do
-        if part.Name == name then return true end
+    for _, n in ipairs(ExtraProjectileNames) do
+        if part.Name == n then return true end
     end
-
-    -- Velocity-based detection
     if Get("VelocityDetect") then
-        local threshold = GetOpt("VelocityThreshold") or 80
-        local vel       = part.AssemblyLinearVelocity.Magnitude
-        local size      = part.Size
-        local isSmall   = size.X < 5 and size.Y < 5 and size.Z < 5
-
-        if vel > threshold and isSmall then
-            -- Confirm by checking nearby player with slingshot tool
-            for _, player in ipairs(Players:GetPlayers()) do
-                local char = player.Character
-                if not char then continue end
-                local tool = char:FindFirstChildOfClass("Tool")
+        local thresh = Opt("VelocityThreshold") or 80
+        local vel    = part.AssemblyLinearVelocity.Magnitude
+        local sz     = part.Size
+        if vel > thresh and sz.X < 5 and sz.Y < 5 and sz.Z < 5 then
+            for _, pl in ipairs(Players:GetPlayers()) do
+                local ch2 = pl.Character
+                if not ch2 then continue end
+                local tool = ch2:FindFirstChildOfClass("Tool")
                 if tool then
-                    local tname = tool.Name:lower()
-                    if tname:find("sling") or tname:find("pebble") or tname:find("stone") then
-                        local root = char:FindFirstChild("HumanoidRootPart")
-                        if root and (root.Position - part.Position).Magnitude < 40 then
+                    local tn = tool.Name:lower()
+                    if tn:find("sling") or tn:find("pebble") or tn:find("stone") then
+                        local r = ch2:FindFirstChild("HumanoidRootPart")
+                        if r and (r.Position - part.Position).Magnitude < 40 then
                             return true
                         end
                     end
@@ -445,131 +451,90 @@ local function IsKnownProjectile(part)
             end
         end
     end
-
     return false
 end
 
-local function DetectOwner(projectile)
-    local spawnPos  = projectile.Position
-    local bestOwner = nil
-    local bestDist  = 50
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        local char = player.Character
-        if not char then continue end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then continue end
-        local dist = (root.Position - spawnPos).Magnitude
-        if dist < bestDist then
-            bestDist  = dist
-            bestOwner = player
-        end
+local function DetectOwner(proj)
+    local sp   = proj.Position
+    local best = nil
+    local bd   = 50
+    for _, pl in ipairs(Players:GetPlayers()) do
+        local ch2 = pl.Character
+        if not ch2 then continue end
+        local r = ch2:FindFirstChild("HumanoidRootPart")
+        if not r then continue end
+        local d = (r.Position - sp).Magnitude
+        if d < bd then bd = d; best = pl end
     end
-
-    return bestOwner
+    return best
 end
 
-local function GetNearestEnemy(fromPos, excludePlayer)
-    local bestTarget = nil
-    local bestDist   = GetOpt("MaxHomingDist") or 500
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        if excludePlayer and player == excludePlayer then continue end
-        if Get("TeamCheck") and LP.Team and player.Team == LP.Team then continue end
-
-        local char = player.Character
-        if not char then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
+local function GetNearestEnemy(fromPos, exclude)
+    local best  = nil
+    local bd    = Opt("MaxHomingDist") or 500
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl == LP then continue end
+        if exclude and pl == exclude then continue end
+        if Get("TeamCheck") and LP.Team and pl.Team == LP.Team then continue end
+        local ch2 = pl.Character
+        if not ch2 then continue end
+        local hum = ch2:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
-
-        local head = char:FindFirstChild("Head")
-            or char:FindFirstChild("HumanoidRootPart")
+        local head = ch2:FindFirstChild("Head") or ch2:FindFirstChild("HumanoidRootPart")
         if not head then continue end
-
-        local dist = (head.Position - fromPos).Magnitude
-        if dist < bestDist then
-            bestDist  = dist
-            bestTarget = head
-        end
+        local d = (head.Position - fromPos).Magnitude
+        if d < bd then bd = d; best = head end
     end
-
-    return bestTarget
+    return best
 end
 
-local function PredictTarget(targetPart, projectilePart)
-    local speed    = GetOpt("HomingSpeed") or 280
-    local dist     = (targetPart.Position - projectilePart.Position).Magnitude
-    local tTime    = dist / math.max(speed, 1)
-    local vel      = targetPart.AssemblyLinearVelocity
-    -- Two-pass prediction
-    local pred     = targetPart.Position + vel * tTime
-    local dist2    = (pred - projectilePart.Position).Magnitude
-    local tTime2   = dist2 / math.max(speed, 1)
-    return targetPart.Position + vel * tTime2
+local function PredictPos(targetPart, proj)
+    local spd  = Opt("HomingSpeed") or 280
+    local dist = (targetPart.Position - proj.Position).Magnitude
+    local t    = dist / math.max(spd, 1)
+    local vel  = targetPart.AssemblyLinearVelocity
+    local pred = targetPart.Position + vel * t
+    local d2   = (pred - proj.Position).Magnitude
+    local t2   = d2 / math.max(spd, 1)
+    return targetPart.Position + vel * t2
 end
 
--- ============================================================
--- [[ APPLY BYPASS METHODS ]]
--- ============================================================
-local function ApplyHoming(part, owner)
-    local speed  = GetOpt("HomingSpeed") or 280
-
-    -- Determine target
-    local targetPart = nil
-
-    -- Redirect back to owner if enabled
+local function DoHoming(part, owner)
+    local spd    = Opt("HomingSpeed") or 280
+    local target = nil
     if Get("RedirectToOwner") and owner and owner ~= LP and owner.Character then
-        targetPart = owner.Character:FindFirstChild("Head")
+        target = owner.Character:FindFirstChild("Head")
             or owner.Character:FindFirstChild("HumanoidRootPart")
     end
+    if not target then target = GetNearestEnemy(part.Position, LP) end
+    if not target then return end
 
-    -- Fallback to nearest enemy
-    if not targetPart then
-        targetPart = GetNearestEnemy(part.Position, LP)
-    end
-
-    if not targetPart then return end
-
-    local targetPos = Get("HomingPrediction")
-        and PredictTarget(targetPart, part)
-        or  targetPart.Position
-
-    local dir = (targetPos - part.Position)
+    local tPos = Get("HomingPrediction") and PredictPos(target, part) or target.Position
+    local dir  = (tPos - part.Position)
     if dir.Magnitude < 0.1 then return end
-
     pcall(function()
-        part.AssemblyLinearVelocity = dir.Unit * speed
+        part.AssemblyLinearVelocity = dir.Unit * spd
     end)
 end
 
-local function ApplyInvisible(part)
+local function DoInvisible(part)
     pcall(function()
         part.Transparency = 1
         part.CanCollide   = false
         part.CanQuery     = false
         part.CanTouch     = false
         part.CastShadow   = false
-
-        for _, child in ipairs(part:GetDescendants()) do
-            if child:IsA("ParticleEmitter") then
-                child.Enabled = false
-            elseif child:IsA("PointLight")
-                or child:IsA("SpotLight")
-                or child:IsA("SurfaceLight") then
-                child.Enabled = false
-            elseif child:IsA("Sound") then
-                child:Stop()
-            elseif child:IsA("Trail") then
-                child.Enabled = false
-            elseif child:IsA("SelectionBox") then
-                child.Visible = false
+        for _, c in ipairs(part:GetDescendants()) do
+            if c:IsA("ParticleEmitter") then c.Enabled = false
+            elseif c:IsA("PointLight") or c:IsA("SpotLight") then c.Enabled = false
+            elseif c:IsA("Sound") then c:Stop()
+            elseif c:IsA("Trail") then c.Enabled = false
             end
         end
     end)
 end
 
-local function ApplyNullify(part)
+local function DoNullify(part)
     task.defer(function()
         if part and part.Parent then
             pcall(function() part:Destroy() end)
@@ -577,177 +542,404 @@ local function ApplyNullify(part)
     end)
 end
 
--- ============================================================
--- [[ PROCESS PROJECTILE ]]
--- ============================================================
 local function ProcessProjectile(part)
     if not Get("BypassEnabled") then return end
-    if not IsKnownProjectile(part) then return end
+    if not IsProjectile(part) then return end
 
-    -- Register
-    ActiveProjectiles[part] = {
-        SpawnTime  = tick(),
-        Processed  = false,
-    }
+    ActiveProjectiles[part] = { SpawnTime = tick(), Done = false }
 
-    -- Random stealth delay
     local delay = 0
     if Get("RandomDelay") then
-        local maxMs = GetOpt("MaxRandomDelay") or 16
-        delay = math.random() * (maxMs / 1000)
+        delay = math.random() * ((Opt("MaxRandomDelay") or 16) / 1000)
     end
+    local hDelay = (Opt("HomingDelay") or 5) / 1000
 
-    -- Homing delay
-    local homingDelayMs = GetOpt("HomingDelay") or 5
-    local totalDelay    = delay + (homingDelayMs / 1000)
-
-    task.delay(totalDelay, function()
+    task.delay(delay + hDelay, function()
         if not part or not part.Parent then return end
 
-        -- Detect owner
         local owner = DetectOwner(part)
         ProjectileOwners[part] = owner
 
-        -- Skip our own (unless OwnProjectileHoming is on)
-        if owner == LP and not Get("OwnProjectileHoming") then return end
+        if owner == LP and not Get("OwnProjHoming") then return end
 
-        -- Update status
-        OwnerLabel:SetText('Last Owner: ' .. (owner and owner.Name or "Unknown"))
-        StatusLabel:SetText('Status: Projectile Detected!')
+        local method = Opt("BypassMethod") or "Combined"
 
-        local method = GetOpt("BypassMethod") or "Combined"
-
-        local function run()
-            -- Combined runs all enabled methods
+        pcall(function()
             if method == "Combined" then
-                if Get("HomingEnabled") and owner ~= LP then
-                    ApplyHoming(part, owner)
-                end
-                if Get("InvisEnabled") and owner ~= LP then
-                    ApplyInvisible(part)
-                end
-                if Get("NullifyEnabled") and owner ~= LP then
-                    ApplyNullify(part)
-                    return -- no need to continue
-                end
-
-            elseif method == "Homing" then
-                ApplyHoming(part, owner)
-
-            elseif method == "Invisible" then
-                ApplyInvisible(part)
-
-            elseif method == "Nullify" then
-                ApplyNullify(part)
-                return
-
-            elseif method == "FastCast Hook" then
-                -- Already hooked at module level (see below)
-                -- Additionally apply invisible as safety net
-                ApplyInvisible(part)
+                if Get("HomingEnabled")  and owner ~= LP then DoHoming(part, owner) end
+                if Get("InvisEnabled")   and owner ~= LP then DoInvisible(part) end
+                if Get("NullifyEnabled") and owner ~= LP then DoNullify(part) end
+            elseif method == "Homing"    then DoHoming(part, owner)
+            elseif method == "Invisible" then DoInvisible(part)
+            elseif method == "Nullify"   then DoNullify(part)
             end
-        end
+        end)
 
-        if Get("UsePCall") then
-            pcall(run)
-        else
-            run()
-        end
-
-        ActiveProjectiles[part].Processed = true
+        ActiveProjectiles[part].Done = true
     end)
 end
 
--- ============================================================
--- [[ WORKSPACE WATCHERS ]]
--- ============================================================
+-- Workspace watchers
+workspace.ChildAdded:Connect(function(o)       pcall(ProcessProjectile, o) end)
+workspace.DescendantAdded:Connect(function(o)  pcall(ProcessProjectile, o) end)
+workspace.ChildRemoved:Connect(function(o)     ActiveProjectiles[o] = nil; ProjectileOwners[o] = nil end)
+workspace.DescendantRemoving:Connect(function(o) ActiveProjectiles[o] = nil; ProjectileOwners[o] = nil end)
 
--- ChildAdded: catch direct workspace children
-workspace.ChildAdded:Connect(function(obj)
-    pcall(ProcessProjectile, obj)
-end)
-
-workspace.ChildRemoved:Connect(function(obj)
-    ActiveProjectiles[obj] = nil
-    ProjectileOwners[obj]  = nil
-end)
-
--- DescendantAdded: catch nested projectiles
-workspace.DescendantAdded:Connect(function(obj)
-    pcall(ProcessProjectile, obj)
-end)
-
-workspace.DescendantRemoving:Connect(function(obj)
-    ActiveProjectiles[obj] = nil
-    ProjectileOwners[obj]  = nil
+task.spawn(function()
+    for _, o in ipairs(workspace:GetDescendants()) do pcall(ProcessProjectile, o) end
 end)
 
 -- ============================================================
--- [[ CONTINUOUS UPDATE LOOP ]]
--- Keeps homing active every frame
+-- [[ ORBIT AURA SYSTEM ]]
+-- Parts rotate around character body
+-- When a slingshot projectile enters intercept range → destroy
 -- ============================================================
-local UpdateEvent = RunService.PreRender -- stealthy
+local OrbitParts      = {}   -- { Part, AngleOffset, Layer }
+local OrbitAngle      = 0
+local OrbitFolder     = nil
 
-UpdateEvent:Connect(function()
-    if not Get("BypassEnabled") then return end
+-- Cleanup function exposed globally
+_G.OrbitCleanup = function()
+    for _, data in ipairs(OrbitParts) do
+        if data.Part and data.Part.Parent then
+            data.Part:Destroy()
+        end
+    end
+    table.clear(OrbitParts)
+    if OrbitFolder and OrbitFolder.Parent then
+        OrbitFolder:Destroy()
+        OrbitFolder = nil
+    end
+    OrbitStatusLbl:SetText('Orbit Parts: 0')
+end
 
-    local count   = 0
-    local maxLife = GetOpt("ProjectileLifetime") or 10
+-- Set visibility of all orbit parts
+_G.OrbitSetVisible = function(visible)
+    local transp = visible and (Opt("OrbitTransparency") or 0) / 100 or 1
+    for _, data in ipairs(OrbitParts) do
+        if data.Part and data.Part.Parent then
+            data.Part.Transparency = transp
+        end
+    end
+end
 
-    pcall(function()
-        for part, data in pairs(ActiveProjectiles) do
-            -- Validate
-            if not part or not part.Parent then
-                ActiveProjectiles[part] = nil
-                ProjectileOwners[part]  = nil
-                continue
-            end
+-- Rebuild orbit parts with new count
+_G.OrbitRebuild = function(count)
+    _G.OrbitCleanup()
+    if not Get("OrbitEnabled") then return end
 
-            count = count + 1
-            local owner  = ProjectileOwners[part]
-            local method = GetOpt("BypassMethod") or "Combined"
+    -- Create folder to contain parts
+    OrbitFolder = Instance.new("Folder")
+    OrbitFolder.Name = "_CreepOrbitAura"
+    OrbitFolder.Parent = workspace
 
-            -- Skip our own unless setting enabled
-            if owner == LP and not Get("OwnProjectileHoming") then continue end
+    local shape = Opt("OrbitShape") or "Ball"
+    local shapeEnum
+    if shape == "Ball"     then shapeEnum = Enum.PartType.Ball
+    elseif shape == "Cylinder" then shapeEnum = Enum.PartType.Cylinder
+    else shapeEnum = Enum.PartType.Block end
 
-            -- Continuous homing re-steer
-            if data.Processed and (method == "Homing" or method == "Combined") then
-                if Get("HomingEnabled") and owner ~= LP then
-                    ApplyHoming(part, owner)
+    local pattern = Opt("OrbitPattern") or "Ring"
+
+    for i = 1, count do
+        local part = Instance.new("Part")
+        part.Name         = "_OrbitPart_" .. i
+        part.Anchored     = true
+        part.CanCollide   = false
+        part.CanQuery     = false
+        part.CanTouch     = false
+        part.CastShadow   = false
+        part.Massless     = true
+        part.Shape        = shapeEnum
+
+        local sz = Opt("OrbitSize") or 1
+        part.Size = Vector3.new(sz, sz, sz)
+
+        local transp = Get("OrbitVisible") and (Opt("OrbitTransparency") or 0) / 100 or 1
+        part.Transparency = transp
+
+        if Get("OrbitGlow") then
+            part.Material = Enum.Material.Neon
+        else
+            part.Material = Enum.Material.SmoothPlastic
+        end
+
+        part.Color  = Options["OrbitColor"] and Options["OrbitColor"].Value or Color3.fromRGB(0,200,255)
+        part.Parent = OrbitFolder
+
+        -- Add point light for glow effect
+        if Get("OrbitGlow") then
+            local pl = Instance.new("PointLight")
+            pl.Brightness = 2
+            pl.Range      = 8
+            pl.Color      = part.Color
+            pl.Parent     = part
+        end
+
+        -- Angle offset evenly spaced around ring
+        local angleOffset = (2 * math.pi / count) * (i - 1)
+
+        -- Layer for double ring / helix
+        local layer = (i % 2 == 0) and 1 or -1
+
+        table.insert(OrbitParts, {
+            Part        = part,
+            AngleOffset = angleOffset,
+            Layer       = layer,
+            Index       = i,
+            Total       = count,
+        })
+    end
+
+    OrbitStatusLbl:SetText('Orbit Parts: ' .. count)
+    print("[creep.cc] Orbit rebuilt with", count, "parts")
+end
+
+-- Get position for each pattern
+local function GetOrbitPosition(data, angle, rootCF, radius, height, tilt)
+    local a       = angle + data.AngleOffset
+    local pattern = Opt("OrbitPattern") or "Ring"
+    local total   = data.Total
+    local idx     = data.Index
+    local lx, ly, lz
+
+    if pattern == "Ring" then
+        lx = math.cos(a) * radius
+        ly = height
+        lz = math.sin(a) * radius
+
+    elseif pattern == "Double Ring" then
+        -- Two rings offset vertically
+        local vertOff = data.Layer * 1.5
+        lx = math.cos(a) * radius
+        ly = height + vertOff
+        lz = math.sin(a) * radius
+
+    elseif pattern == "Helix" then
+        -- Spiral upward then wrap around
+        local helixT  = (idx / total) * 2 * math.pi
+        local helixY  = math.sin(helixT) * 2
+        lx = math.cos(a) * radius
+        ly = height + helixY
+        lz = math.sin(a) * radius
+
+    elseif pattern == "Figure 8" then
+        -- Lissajous figure 8
+        lx = math.sin(a) * radius
+        ly = height + math.sin(a * 2) * 1.5
+        lz = math.cos(a) * radius
+
+    elseif pattern == "Spiral" then
+        -- Expanding then contracting radius over time
+        local pulseMult = (math.sin(tick() * 2 + data.AngleOffset) + 1) / 2
+        local r         = radius * (0.5 + pulseMult * 0.5)
+        lx = math.cos(a) * r
+        ly = height
+        lz = math.sin(a) * r
+    end
+
+    -- Apply tilt rotation
+    local tiltRad = math.rad(tilt)
+    local tilted  = CFrame.Angles(tiltRad, 0, 0)
+
+    local localPos = Vector3.new(lx, ly, lz)
+    local worldPos = rootCF * tilted * CFrame.new(localPos)
+    return worldPos.Position
+end
+
+-- Get color per orbit part (rainbow / gradient / solid)
+local function GetOrbitColor(data, angle)
+    if Get("OrbitRainbow") then
+        local hue = ((tick() * 0.5 + data.AngleOffset / (2 * math.pi)) % 1)
+        return Color3.fromHSV(hue, 1, 1)
+    end
+
+    -- Gradient between color1 and color2
+    local col1 = Options["OrbitColor"]  and Options["OrbitColor"].Value  or Color3.fromRGB(0,200,255)
+    local col2 = Options["OrbitColor2"] and Options["OrbitColor2"].Value or Color3.fromRGB(255,0,200)
+    local t    = (math.sin(angle + data.AngleOffset) + 1) / 2
+    return col1:Lerp(col2, t)
+end
+
+-- ============================================================
+-- [[ MAIN UPDATE LOOP ]]
+-- ============================================================
+local UpdateConn = RunService.RenderStepped:Connect(function(dt)
+    if bc.Unloaded then return end
+
+    -- --------------------------------------------------------
+    -- Bypass continuous update
+    -- --------------------------------------------------------
+    if Get("BypassEnabled") then
+        local projCount  = 0
+        local maxLife    = 10
+
+        pcall(function()
+            for part, data in pairs(ActiveProjectiles) do
+                if not part or not part.Parent then
+                    ActiveProjectiles[part] = nil
+                    ProjectileOwners[part]  = nil
+                    continue
+                end
+
+                projCount       = projCount + 1
+                local owner     = ProjectileOwners[part]
+                local method    = Opt("BypassMethod") or "Combined"
+
+                if owner == LP and not Get("OwnProjHoming") then continue end
+
+                -- Continuous homing re-steer
+                if data.Done then
+                    if (method == "Homing" or method == "Combined") and Get("HomingEnabled") then
+                        if owner ~= LP then DoHoming(part, owner) end
+                    end
+                    -- Re-apply invisible if reset by game
+                    if (method == "Invisible" or method == "Combined") and Get("InvisEnabled") then
+                        if owner ~= LP and part.Transparency ~= 1 then
+                            pcall(function() part.Transparency = 1; part.CanCollide = false end)
+                        end
+                    end
+                end
+
+                if tick() - data.SpawnTime > maxLife then
+                    ActiveProjectiles[part] = nil
+                    ProjectileOwners[part]  = nil
                 end
             end
+        end)
 
-            -- Re-apply invisible (game may reset it)
-            if (method == "Invisible" or method == "Combined") then
-                if Get("InvisEnabled") and owner ~= LP then
-                    if part.Transparency ~= 1 then
-                        pcall(function() part.Transparency = 1 end)
-                        pcall(function() part.CanCollide   = false end)
+        ProjectileLbl:SetText('Projectiles: ' .. projCount)
+        if projCount > 0 then
+            StatusLabel:SetText('Bypass: Active ✓')
+        else
+            StatusLabel:SetText('Bypass: Idle')
+        end
+    end
+
+    -- --------------------------------------------------------
+    -- Orbit Aura update
+    -- --------------------------------------------------------
+    if Get("OrbitEnabled") and #OrbitParts > 0 then
+        local myChar = LP.Character
+        if not myChar then return end
+
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        if not myRoot then return end
+
+        local speed  = Opt("OrbitSpeed")  or 2
+        local radius = Opt("OrbitRadius") or 6
+        local height = Opt("OrbitHeight") or 0
+        local tilt   = Opt("OrbitTilt")   or 0
+        local sz     = Opt("OrbitSize")   or 1
+        local intercR= Opt("InterceptRadius") or 2
+
+        -- Advance angle
+        OrbitAngle = OrbitAngle + speed * dt
+
+        local rootCF = myRoot.CFrame
+
+        for _, data in ipairs(OrbitParts) do
+            local part = data.Part
+            if not part or not part.Parent then continue end
+
+            -- Calculate new world position
+            local worldPos = GetOrbitPosition(data, OrbitAngle, rootCF, radius, height, tilt)
+
+            -- Update size dynamically
+            part.Size = Vector3.new(sz, sz, sz)
+
+            -- Update color
+            local col = GetOrbitColor(data, OrbitAngle)
+            part.Color = col
+
+            -- Update glow light color
+            local light = part:FindFirstChildOfClass("PointLight")
+            if light then light.Color = col end
+
+            -- Update material
+            part.Material = Get("OrbitGlow") and Enum.Material.Neon or Enum.Material.SmoothPlastic
+
+            -- Update transparency
+            local vis    = Get("OrbitVisible")
+            local transp = vis and (Opt("OrbitTransparency") or 0) / 100 or 1
+            part.Transparency = transp
+
+            -- Smoothly move to position
+            part.CFrame = CFrame.new(worldPos)
+
+            -- ------------------------------------------------
+            -- INTERCEPT CHECK
+            -- Check if any slingshot projectile is within
+            -- intercept radius of this orbit part
+            -- ------------------------------------------------
+            if Get("OrbitIntercept") then
+                for proj, pdata in pairs(ActiveProjectiles) do
+                    if not proj or not proj.Parent then continue end
+
+                    local owner = ProjectileOwners[proj]
+                    if owner == LP then continue end -- don't intercept own shots
+
+                    local distToOrbit = (proj.Position - worldPos).Magnitude
+
+                    if distToOrbit <= intercR then
+                        -- INTERCEPT: destroy the projectile
+                        pcall(function()
+                            proj:Destroy()
+                        end)
+                        ActiveProjectiles[proj] = nil
+                        ProjectileOwners[proj]  = nil
+                        InterceptedCount        = InterceptedCount + 1
+                        InterceptLbl:SetText('Intercepted: ' .. InterceptedCount)
+
+                        -- Visual flash on intercept
+                        local flashColor = Color3.new(1, 1, 0)
+                        local origColor  = part.Color
+                        part.Color = flashColor
+                        task.delay(0.1, function()
+                            if part and part.Parent then
+                                part.Color = origColor
+                            end
+                        end)
                     end
                 end
             end
-
-            -- Auto cleanup stale projectiles
-            if tick() - data.SpawnTime > maxLife then
-                ActiveProjectiles[part] = nil
-                ProjectileOwners[part]  = nil
-            end
         end
-    end)
 
-    -- Update status labels
-    ProjectileLabel:SetText('Active Projectiles: ' .. count)
-    if count == 0 then
-        StatusLabel:SetText('Status: Idle')
+        OrbitStatusLbl:SetText('Orbit Parts: ' .. #OrbitParts)
     end
 end)
 
 -- ============================================================
--- [[ SCAN EXISTING ]]
+-- [[ ORBIT AUTO BUILD ON TOGGLE ]]
+-- ============================================================
+Toggles["OrbitEnabled"]:OnChanged(function(v)
+    if v then
+        local count = math.floor(Opt("OrbitCount") or 6)
+        _G.OrbitRebuild(count)
+    else
+        _G.OrbitCleanup()
+    end
+end)
+
+Options["OrbitCount"]:OnChanged(function(v)
+    if Get("OrbitEnabled") then
+        _G.OrbitRebuild(math.floor(v))
+    end
+end)
+
+-- Rebuild on shape change
+Options["OrbitShape"]:OnChanged(function()
+    if Get("OrbitEnabled") then
+        _G.OrbitRebuild(math.floor(Opt("OrbitCount") or 6))
+    end
+end)
+
+-- ============================================================
+-- [[ INITIAL SCAN ]]
 -- ============================================================
 task.spawn(function()
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        pcall(ProcessProjectile, obj)
+    for _, o in ipairs(workspace:GetDescendants()) do
+        pcall(ProcessProjectile, o)
     end
 end)
 
@@ -756,9 +948,11 @@ end)
 -- ============================================================
 bc:OnUnload(function()
     bc.Unloaded = true
+    if UpdateConn then UpdateConn:Disconnect() end
+    _G.OrbitCleanup()
     table.clear(ActiveProjectiles)
     table.clear(ProjectileOwners)
-    print("[creep.cc] Slingshot bypass unloaded.")
+    print("[creep.cc] Rivals bypass unloaded.")
 end)
 
 return function() bc:Unload() end
